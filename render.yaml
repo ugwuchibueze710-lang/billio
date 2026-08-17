@@ -1,0 +1,108 @@
+# Render Blueprint for Billio. Deploy with: https://dashboard.render.com/blueprints
+# then connect this repo and Render will read this file.
+#
+# You will still need to fill in secret environment variables (GROQ_API_KEY,
+# RESEND_API_KEY, S3_* / R2 credentials, VAPID keys, etc.) in the Render
+# dashboard -- see backend/.env.example for the full list and where to get
+# each value. Never commit real secrets into this file or the repo.
+
+databases:
+  - name: billio-db
+    databaseName: billio
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  # --- Backend API ---
+  - type: web
+    name: billio-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn wsgi:app --workers 3 --threads 2 --timeout 60"
+    healthCheckPath: /healthz
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: billio-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FRONTEND_BASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET_NAME
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+
+  # --- Reminder scheduler (hourly, so every user's local reminder window is
+  #     caught promptly regardless of timezone) ---
+  - type: cron
+    name: billio-reminder-scheduler
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    schedule: "0 * * * *"
+    startCommand: "flask send-reminders"
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: billio-db
+          property: connectionString
+      - key: SECRET_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: FRONTEND_BASE_URL
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+
+  # --- Frontend static site ---
+  - type: web
+    name: billio-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
