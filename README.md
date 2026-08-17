@@ -102,6 +102,8 @@ Built honestly rather than silently glossed over:
 
 ## Deploying to Render
 
+`backend/.python-version` pins the Python version Render builds with to `3.12`. This matters because `psycopg2-binary`'s prebuilt wheel isn't compatible with Render's newer default Python (3.14 as of early 2026) — installing it there causes the backend to crash on startup with `ImportError: ... undefined symbol: _PyInterpreterState_Get`. Don't delete this file unless you've confirmed a newer `psycopg2-binary` release supports whatever Python version you switch to.
+
 1. Push this repo to GitHub/GitLab.
 2. In Render, create a new **Blueprint** and point it at the repo — it will read `render.yaml` and create two services: `billio-api` (web) and `billio-frontend` (static site), plus a managed Postgres database (`billio-db`).
 3. Render generates `SECRET_KEY`/`JWT_SECRET_KEY` automatically and wires `DATABASE_URL` from the managed database. You still need to fill in, in the Render dashboard, every variable marked `sync: false` in `render.yaml` — see `backend/.env.example` for where to get each one:
