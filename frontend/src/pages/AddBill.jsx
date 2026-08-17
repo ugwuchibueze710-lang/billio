@@ -69,7 +69,7 @@ export default function AddBill() {
 }
 
 function PhotoTab({ onDone, createBill }) {
-  const inputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   const [results, setResults] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -131,24 +131,28 @@ function PhotoTab({ onDone, createBill }) {
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-600">
         <CameraIcon className="h-7 w-7" />
       </div>
-      <h3 className="mt-4 text-lg font-bold text-ink-900">Upload a bill photo</h3>
+      <h3 className="mt-4 text-lg font-bold text-ink-900">Take a photo of your bill</h3>
       <p className="mx-auto mt-1 max-w-xs text-sm text-ink-500">
-        Billio will read the details and let you confirm before anything is saved. You can upload multiple bills at once.
+        Billio will read the details with AI and let you confirm before anything is saved.
       </p>
+      {/* capture="environment" opens the device camera directly rather than
+          a file/gallery picker -- this is the only way to add a bill photo,
+          per product decision (no upload-from-gallery option). */}
       <input
-        ref={inputRef}
+        ref={cameraInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/heic"
-        multiple
+        capture="environment"
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
       <button
-        onClick={() => inputRef.current?.click()}
+        onClick={() => cameraInputRef.current?.click()}
         disabled={uploading}
-        className="mt-5 rounded-xl bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
+        className="mt-5 flex items-center gap-1.5 rounded-xl bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-800 disabled:opacity-50 mx-auto"
       >
-        {uploading ? "Reading bill…" : "Choose photo(s)"}
+        <CameraIcon className="h-4 w-4" />
+        {uploading ? "Reading bill…" : "Take a photo"}
       </button>
       {error && <p className="mt-3 text-sm font-medium text-danger-600">{error}</p>}
     </div>
