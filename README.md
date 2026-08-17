@@ -115,7 +115,7 @@ Built honestly rather than silently glossed over:
    - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` → generate with `npx web-push generate-vapid-keys`
    - `NOTIFICATION_SCHEDULER_TOKEN` → any long random string you make up yourself (e.g. `python -c "import secrets; print(secrets.token_hex(32))"`) — this protects the hourly reminder endpoint, see below
    - On `billio-frontend`: `VITE_API_BASE_URL` → your deployed backend's URL (e.g. `https://billio-api.onrender.com`)
-4. The first deploy runs `flask db upgrade` automatically via the `release` step in `backend/Procfile` (Render's Python runtime respects this).
+4. `billio-api`'s start command runs `flask db upgrade` before starting gunicorn on every deploy/restart, so the database schema is created automatically on the first deploy and kept up to date on every later one. (Render's Procfile `release` step and its newer "Pre-Deploy Command" feature both require a paid plan, so this project runs the migration inline in the start command instead, which works on the free tier.)
 5. Confirm `billio-api`'s `/healthz` returns `{"status": "ok"}`.
 
 ### Hourly reminder scheduler (no Render Cron Job needed)

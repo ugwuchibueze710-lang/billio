@@ -20,9 +20,16 @@ services:
     plan: free
     rootDir: backend
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn wsgi:app --workers 3 --threads 2 --timeout 60"
+    # Render's "Pre-Deploy Command" feature (the free-tier-incompatible
+    # equivalent of Heroku's Procfile "release" step) requires a paid plan,
+    # so on the free plan the database migration has to run as part of the
+    # start command itself instead. `flask db upgrade` is safe to run on
+    # every restart -- it only applies migrations that haven't run yet.
+    startCommand: "flask db upgrade && gunicorn wsgi:app --workers 3 --threads 2 --timeout 60"
     healthCheckPath: /healthz
     envVars:
+      - key: FLASK_APP
+        value: wsgi.py
       - key: FLASK_ENV
         value: production
       - key: DATABASE_URL
