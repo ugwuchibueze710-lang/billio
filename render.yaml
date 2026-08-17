@@ -57,40 +57,18 @@ services:
         sync: false
       - key: VAPID_SUBJECT
         sync: false
+      - key: NOTIFICATION_SCHEDULER_TOKEN
+        sync: false
 
-  # --- Reminder scheduler (hourly, so every user's local reminder window is
-  #     caught promptly regardless of timezone) ---
-  - type: cron
-    name: billio-reminder-scheduler
-    runtime: python
-    plan: free
-    rootDir: backend
-    buildCommand: "pip install -r requirements.txt"
-    schedule: "0 * * * *"
-    startCommand: "flask send-reminders"
-    envVars:
-      - key: FLASK_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: billio-db
-          property: connectionString
-      - key: SECRET_KEY
-        sync: false
-      - key: JWT_SECRET_KEY
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: RESEND_FROM_EMAIL
-        sync: false
-      - key: FRONTEND_BASE_URL
-        sync: false
-      - key: VAPID_PUBLIC_KEY
-        sync: false
-      - key: VAPID_PRIVATE_KEY
-        sync: false
-      - key: VAPID_SUBJECT
-        sync: false
+  # NOTE: Render removed the free plan for Cron Jobs, so this deployment
+  # does NOT use a Render Cron Job for the hourly reminder scan (that would
+  # cost ~$1/month minimum). Instead, billio-api exposes an HTTP endpoint
+  # (POST /api/notifications/run-scheduler, protected by the
+  # NOTIFICATION_SCHEDULER_TOKEN header above) that a free external
+  # scheduler (e.g. cron-job.org) can call once an hour. See README for
+  # setup steps. If you'd rather use Render's native Cron Job later, add
+  # back a `type: cron` service running `flask send-reminders` with
+  # `plan: starter` (or higher).
 
   # --- Frontend static site ---
   - type: web

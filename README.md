@@ -103,7 +103,7 @@ Built honestly rather than silently glossed over:
 ## Deploying to Render
 
 1. Push this repo to GitHub/GitLab.
-2. In Render, create a new **Blueprint** and point it at the repo — it will read `render.yaml` and create three services: `billio-api` (web), `billio-reminder-scheduler` (cron, hourly), and `billio-frontend` (static site), plus a managed Postgres database.
+2. In Render, create a new **Blueprint** and point it at the repo — it will read `render.yaml` and create two services: `billio-api` (web) and `billio-frontend` (static site), plus a managed Postgres database (`billio-db`).
 3. Render generates `SECRET_KEY`/`JWT_SECRET_KEY` automatically and wires `DATABASE_URL` from the managed database. You still need to fill in, in the Render dashboard, every variable marked `sync: false` in `render.yaml` — see `backend/.env.example` for where to get each one:
    - `CORS_ORIGINS` → your deployed frontend's exact URL (e.g. `https://billio-frontend.onrender.com`)
    - `FRONTEND_BASE_URL` → same URL, used to build links in emails/push
@@ -111,9 +111,26 @@ Built honestly rather than silently glossed over:
    - `RESEND_API_KEY`, `RESEND_FROM_EMAIL` → https://resend.com (see domain verification below)
    - `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME` → your Cloudflare R2 bucket
    - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` → generate with `npx web-push generate-vapid-keys`
+   - `NOTIFICATION_SCHEDULER_TOKEN` → any long random string you make up yourself (e.g. `python -c "import secrets; print(secrets.token_hex(32))"`) — this protects the hourly reminder endpoint, see below
    - On `billio-frontend`: `VITE_API_BASE_URL` → your deployed backend's URL (e.g. `https://billio-api.onrender.com`)
 4. The first deploy runs `flask db upgrade` automatically via the `release` step in `backend/Procfile` (Render's Python runtime respects this).
-5. Confirm `billio-api`'s `/healthz` returns `{"status": "ok"}` and the reminder cron job has a green run in the Render dashboard.
+5. Confirm `billio-api`'s `/healthz` returns `{"status": "ok"}`.
+
+### Hourly reminder scheduler (no Render Cron Job needed)
+
+Render discontinued the free plan for Cron Jobs, so this Blueprint does **not** create one (avoiding an unnecessary ~$1/month minimum charge). Instead, `billio-api` exposes `POST /api/notifications/run-scheduler`, which runs the exact same reminder scan a cron job would, guarded by a constant-time comparison against the `NOTIFICATION_SCHEDULER_TOKEN` you set above. The endpoint is disabled entirely (returns 401) if that token is unset.
+
+Wire up a **free** external scheduler to call it once an hour:
+
+1. Go to a free cron-ping service such as https://cron-job.org (no affiliation — any similar service works) and create an account.
+2. Create a new cron job:
+   - URL: `https://<your-billio-api-url>.onrender.com/api/notifications/run-scheduler`
+   - Method: `POST`
+   - Schedule: every hour (e.g. `0 * * * *`)
+   - Custom header: `X-Scheduler-Token: <the exact value you set for NOTIFICATION_SCHEDULER_TOKEN>`
+3. Save it, trigger one manual test run, and confirm it returns `{"message": "Reminder scan complete.", "stats": {...}}`.
+
+If you'd rather use Render's own Cron Job later (once you're OK with the small monthly cost), add back a `type: cron` service to `render.yaml` running `flask send-reminders` on a `plan: starter` (or higher) schedule — see the git history of this file for the exact block that was removed.
 
 ### Resend domain verification (SPF/DKIM)
 
