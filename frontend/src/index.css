@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Neutral base -- calm, trustworthy, not stark black/white. */
+  --color-ink-950: #0b0f14;
+  --color-ink-900: #10161d;
+  --color-ink-800: #1a2229;
+  --color-ink-700: #29333c;
+  --color-ink-600: #3d4a54;
+  --color-ink-500: #5a6b76;
+  --color-ink-400: #7c8b95;
+  --color-ink-300: #a6b2ba;
+  --color-ink-200: #cdd5da;
+  --color-ink-100: #e7ebee;
+  --color-ink-50: #f5f7f8;
+
+  /* Brand -- a deep, quiet indigo/teal. Used sparingly for primary actions. */
+  --color-brand-700: #2f3f8f;
+  --color-brand-600: #3c4fae;
+  --color-brand-500: #4d5fc7;
+  --color-brand-400: #6c7cd6;
+  --color-brand-100: #e3e6fb;
+  --color-brand-50: #f2f3fd;
+
+  /* Status colors */
+  --color-good-700: #146c43;
+  --color-good-600: #1a8754;
+  --color-good-500: #23a566;
+  --color-good-100: #d9f2e4;
+  --color-good-50: #eefaf3;
+
+  --color-warn-700: #a35a00;
+  --color-warn-600: #c76d00;
+  --color-warn-500: #e0821a;
+  --color-warn-100: #fdead0;
+  --color-warn-50: #fef5e8;
+
+  --color-danger-700: #a3231f;
+  --color-danger-600: #c62c27;
+  --color-danger-500: #dc3c36;
+  --color-danger-100: #fbdcda;
+  --color-danger-50: #fdeeed;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  @apply bg-ink-50 text-ink-900 antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection {
+  @apply bg-brand-100 text-brand-700;
+}
+
+@keyframes billio-pop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-billio-pop {
+  animation: billio-pop 260ms ease-out;
+}
+
+@keyframes billio-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-billio-fade-in {
+  animation: billio-fade-in 220ms ease-out;
+}

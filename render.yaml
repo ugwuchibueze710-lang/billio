@@ -1,0 +1,96 @@
+# Render Blueprint for Billio. Deploy with: https://dashboard.render.com/blueprints
+# then connect this repo and Render will read this file.
+#
+# You will still need to fill in secret environment variables (SUPABASE_URL,
+# SUPABASE_SERVICE_ROLE_KEY, GROQ_API_KEY, RESEND_API_KEY, S3_* / Supabase
+# Storage credentials, VAPID keys, etc.) in the Render dashboard -- see
+# backend/.env.example for the full list and where to get each value.
+# Never commit real secrets into this file or the repo.
+
+databases:
+  - name: billio-db
+    databaseName: billio
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  # --- Backend API ---
+  - type: web
+    name: billio-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    # Render's "Pre-Deploy Command" feature (the free-tier-incompatible
+    # equivalent of Heroku's Procfile "release" step) requires a paid plan,
+    # so on the free plan the database migration has to run as part of the
+    # start command itself instead. `flask db upgrade` is safe to run on
+    # every restart -- it only applies migrations that haven't run yet.
+    startCommand: "flask db upgrade && gunicorn wsgi:app --workers 3 --threads 2 --timeout 60"
+    healthCheckPath: /healthz
+    envVars:
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: billio-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FRONTEND_BASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET_NAME
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: NOTIFICATION_SCHEDULER_TOKEN
+        sync: false
+
+  # NOTE: Render removed the free plan for Cron Jobs, so this deployment
+  # does NOT use a Render Cron Job for the hourly reminder scan (that would
+  # cost ~$1/month minimum). Instead, billio-api exposes an HTTP endpoint
+  # (POST /api/notifications/run-scheduler, protected by the
+  # NOTIFICATION_SCHEDULER_TOKEN header above) that a free external
+  # scheduler (e.g. cron-job.org) can call once an hour. See README for
+  # setup steps. If you'd rather use Render's native Cron Job later, add
+  # back a `type: cron` service running `flask send-reminders` with
+  # `plan: starter` (or higher).
+
+  # --- Frontend static site ---
+  - type: web
+    name: billio-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
